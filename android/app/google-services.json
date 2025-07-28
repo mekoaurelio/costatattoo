@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "263500982448",
+    "project_id": "cashback-d3a89",
+    "storage_bucket": "cashback-d3a89.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:263500982448:android:e68507341bd635eb01b375",
+        "android_client_info": {
+          "package_name": "br.com.saldo.cliente.mk.saldocliente"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAr-8gnM8Y1pxTZUTn-YEfhI90_yxdkzxg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:263500982448:android:f78971a1e9f7f6f601b375",
+        "android_client_info": {
+          "package_name": "com.mk.estetica.estetica"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAr-8gnM8Y1pxTZUTn-YEfhI90_yxdkzxg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:263500982448:android:705979c97cd46a5601b375",
+        "android_client_info": {
+          "package_name": "com.net.costatattoo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAr-8gnM8Y1pxTZUTn-YEfhI90_yxdkzxg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
