@@ -191,67 +191,146 @@ class _CustomerListState extends State<CustomerList> {
     if (success == true) {
     }
   }
-
   @override
   Widget build(BuildContext context) {
+    // Pega a largura atual da tela para tomar decisões de layout
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Define um ponto de corte. Abaixo de 768px, consideramos "mobile".
+    const double mobileBreakpoint = 768.0;
+    final bool isMobile = screenWidth < mobileBreakpoint;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Color(0xFFa49494),
-        title:  Texto(tit:'Costa Tattoo Studio',tam: 18,cor: Colors.white,),
+        backgroundColor: const Color(0xFFa49494),
+        title: Texto(tit: 'Costa Tattoo Studio', tam: 18, cor: Colors.white),
         actions: [
+          // O campo de busca SÓ APARECE na AppBar em telas largas
+          if (!isMobile)
+            Container(
+              width: 300,
+              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+              child: CustomTextFiel(
+                controller: _searchController,
+                hintText: 'Pesquisar por nome ou e-mail',
+                label: '',
+                obrigatorio: false,
+                prefixIcon: Icons.search_outlined,
+                // Estilos para combinar com a AppBar
+                //fillColor: Colors.white.withOpacity(0.1),
+                //textColor: Colors.white,
+                //hintColor: Colors.white70,
+                prefixIconColor: Colors.white70,
+              ),
+            ),
 
-        Container(
-        width: 300,
-         child:  CustomTextFiel(
-            controller: _searchController,
-            hintText: 'Pesquisar por nome ou e-mail',
-            label: '',
-            left: 10,
-            prefixIconColor: Colors.white,
-            prefixIcon: Icons.search_outlined,
-            obrigatorio: false,
-           // onChanged: _onSearchChanged(),
+          ///NOVO CLIENTE
+          IconButton(
+            icon: const Icon(Icons.person_add, color: Colors.black, weight: 100),
+            tooltip: 'new_customer'.tr,
+            onPressed: () => _navigateToFormPage(),
           ),
-        ),
-
-        ///NOVO CLIENTE
-        IconButton(
-          icon: const Icon(Icons.person_add,color: Colors.black,weight: 100,),
-          tooltip: 'new_customer'.tr,
-          onPressed: () => _navigateToFormPage(),
-        ),
-        ///EDITAR
-        IconButton(
-          icon: const Icon(Icons.note_alt_outlined, color: Colors.white,),
-          tooltip: 'edit_notes'.tr,
-          onPressed: () {
-            Get.to(() => CustomerNotePage(), arguments: {});
-          },
-        ),
-      ],
-    ),
+          ///EDITAR NOTAS
+          IconButton(
+            icon: const Icon(Icons.note_alt_outlined, color: Colors.white),
+            tooltip: 'edit_notes'.tr,
+            onPressed: () {
+              Get.to(() => CustomerNotePage());
+            },
+          ),
+        ],
+      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-        //  Utils.logo(),
+          // O campo de busca SÓ APARECE no corpo em telas estreitas
+          if (isMobile)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: CustomTextFiel(
+                controller: _searchController,
+                hintText: 'Pesquisar por nome ou e-mail',
+                label: '',
+                obrigatorio: false,
+                prefixIcon: Icons.search_outlined,
+              ),
+            ),
           Expanded(
-            // CHAME O NOVO MÉTODO AQUI
-            child: _paginatedList(),
+            // Passamos o booleano 'isMobile' para a lista
+            child: _paginatedList(isMobile),
           ),
         ],
       ),
     );
   }
 
-  Widget _paginatedList() {
+  // NOVA FUNÇÃO para mostrar o diálogo de edição do valor
+  Future<void> _showEditValueDialog(DocumentSnapshot customerDoc) async {
+    final data = customerDoc.data() as Map<String, dynamic>;
+    final currentValue = (data['value'] ?? 0.0).toString();
+    final valueController = TextEditingController(text: currentValue);
+
+    // showDialog retorna o valor digitado quando o diálogo é fechado com "Salvar"
+    final newValue = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('edit_value'.tr),
+          content: TextField(
+            controller: valueController,
+            autofocus: true,
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'new_value'.tr,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: Text('cancel'.tr),
+              onPressed: () => Navigator.of(context).pop(), // Fecha sem retornar valor
+            ),
+            ElevatedButton(
+              child: Text('save'.tr),
+              onPressed: () {
+                // Fecha e retorna o novo valor
+                Navigator.of(context).pop(valueController.text);
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    // Se o usuário salvou (newValue não é nulo) e o valor mudou
+    if (newValue != null && newValue != currentValue) {
+      // Tenta converter o valor para double
+      final double? parsedValue = double.tryParse(newValue.replaceAll(',', '.'));
+      if (parsedValue != null) {
+        try {
+          // Atualiza o valor no Firestore
+          await FirebaseFirestore.instance
+              .collection('customer')
+              .doc(customerDoc.id)
+              .update({'value': parsedValue});
+
+          Utils.snak('success'.tr, 'value_updated'.tr, false, Colors.green);
+          // Não é necessário chamar setState, o StreamBuilder cuidará da atualização da UI
+        } catch (e) {
+          Utils.snak('error'.tr, 'update_failed'.tr, false, Colors.red);
+        }
+      } else {
+        Utils.snak('error'.tr, 'invalid_value'.tr, false, Colors.red);
+      }
+    }
+  }
+
+  Widget _paginatedList(bool isMobile) { // Recebe a flag aqui
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
     if (_currentDocs.isEmpty) {
       return Utils.vazio('Nenhum Cliente Encontrado');
-
-        //const Center(child: Text('Nenhum cliente encontrado.'));
     }
 
     return Column(
@@ -263,14 +342,16 @@ class _CustomerListState extends State<CustomerList> {
               final doc = _currentDocs[index];
               final data = doc.data() as Map<String, dynamic>;
               return CustomerCard(
-                // ... (propriedades do CustomerCard - sem alterações)
                 name: data['name'] ?? '-',
                 email: data['email'] ?? '-',
                 dateWB: data['dateWB'] ?? '-',
                 imageUrl: data['imageUrl'],
                 dateTattoo: data['createdAt'],
+                value: data['value'] ?? 0.0,
                 onEdit: () => _navigateToFormPage(doc),
                 onImage: () => _navigateToImage(doc),
+                // NOVO: Passe a função do diálogo como callback
+                onValueTap: () => _showEditValueDialog(doc),
                 onDelete: () async {
                   final confirm = await Utils.showDlg('attention'.tr, 'conf_del'.tr, context, 'yes'.tr, 'no'.tr);
                   if (confirm) {
@@ -279,12 +360,14 @@ class _CustomerListState extends State<CustomerList> {
                     _loadInitialData(); // Recarrega a primeira página após deletar
                   }
                 },
+                isMobile: isMobile, // <<< PASSE A FLAG AQUI
+                // ...
               );
             },
           ),
         ),
         const Divider(),
-        _buildPaginationControls(), // Separei os controles em um widget
+        _buildPaginationControls(),
       ],
     );
   }
@@ -322,7 +405,6 @@ class _CustomerListState extends State<CustomerList> {
       ],
     );
   }
-
 }
 
 class CustomerCard extends StatelessWidget {
@@ -330,100 +412,189 @@ class CustomerCard extends StatelessWidget {
   final String email;
   final String dateWB;
   final Timestamp dateTattoo;
-  final String? imageUrl; // NOVO: Propriedade para a URL da imagem
+  final String? imageUrl;
   final VoidCallback? onDelete;
   final VoidCallback? onEdit;
   final VoidCallback? onImage;
+  final bool isMobile; // NOVO: Flag para controlar o layout
+  final num value; // Adicione a propriedade para o valor
+  final VoidCallback? onValueTap; // Callback para o clique
 
   const CustomerCard({
     required this.name,
     required this.email,
     required this.dateWB,
     required this.dateTattoo,
-    this.imageUrl, // NOVO
+    this.imageUrl,
     this.onDelete,
     this.onEdit,
     this.onImage,
+    this.isMobile = false, // Padrão para false
+    required this.value,
+    this.onValueTap,
     super.key,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Escolhe o layout com base na flag 'isMobile'
+    return isMobile ? _buildMobileLayout() : _buildDesktopLayout();
+  }
+
+  // --- LAYOUT PARA TELAS LARGAS (o seu código original) ---
+  Widget _buildDesktopLayout() {
     return Card(
       color: Colors.white,
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       elevation: 3,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Row( // Mudei para Row para alinhar a imagem e os dados
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            CircleAvatar(
-              radius: 60,
-              backgroundColor: Colors.grey.shade200,
-              backgroundImage: (imageUrl != null && imageUrl!.isNotEmpty)
-                  ? NetworkImage('$pathPhpFiles/get_image.php?img=$imageUrl&v=${DateTime.now().millisecondsSinceEpoch}',)
-                  : null,
-
-              child: (imageUrl == null || imageUrl!.isEmpty)
-                  ? Icon(Icons.person, size: 120, color: Colors.grey.shade400)
-                  : null,
-            ),
+            _buildAvatar(radius: 60.0), // Imagem maior
             const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Texto(tit: name,tam: 18,fontWeight: FontWeight.bold,),
-                      ),
-                      if (onImage != null)
-                        IconButton(
-                          icon: const Icon(Icons.monetization_on_rounded, color: Colors.grey),
-                          onPressed: onImage,
-                        ),
-                      if (onImage != null)
-                        IconButton(
-                          icon: const Icon(Icons.image_outlined, color: Colors.green),
-                          onPressed: onImage,
-                        ),
-                      if (onEdit != null)
-                        IconButton(
-                          icon: const Icon(Icons.edit, color: Color(0xFFa49494),),
-                          onPressed: onEdit,
-                        ),
-                      if (onDelete != null)
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: onDelete,
-                        ),
-                    ],
-                  ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Texto(tit:'Email: $email'),
-                  Row(
-                    children: [
-                      Texto(tit:'tattoo_date'.tr+ ': ${converteData(dateTattoo)}'),
-                      Texto(tit:converteHora(dateTattoo),tam: 18,negrito: true,left: 10,cor: Colors.blue,),
-                      Texto(tit:tempoCorrido(dateTattoo),left: 10,tam: 11,right: 15,)
-                    ],
-                  )
-                 // Texto(tit:'birth_date'.tr+ ': $dateWB'),
-                ],
-              ),
-                  Texto(tit:'Value: 980.00'),
-                ],
-              ),
-            ),
+            Expanded(child: _buildInfoColumn()),
           ],
         ),
       ),
     );
   }
+
+  // --- NOVO LAYOUT PARA TELAS ESTREITAS ---
+  Widget _buildMobileLayout() {
+    return Card(
+      color: Colors.white,
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      elevation: 3,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          // Elementos empilhados verticalmente
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _buildAvatar(radius: 40.0), // Imagem menor
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Texto(tit: name, tam: 18, fontWeight: FontWeight.bold),
+                      const SizedBox(height: 4),
+                      Texto(tit: 'Email: $email', tam: 12),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            _buildInfoDetails(),
+            _buildActionButtons(), // Botões separados para melhor layout
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Widget helper para a imagem, para evitar repetição
+  Widget _buildAvatar({required double radius}) {
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Colors.grey.shade200,
+      backgroundImage: (imageUrl != null && imageUrl!.isNotEmpty)
+          ? NetworkImage('$pathPhpFiles/get_image.php?img=$imageUrl&v=${DateTime.now().millisecondsSinceEpoch}')
+          : null,
+      child: (imageUrl == null || imageUrl!.isEmpty)
+          ? Icon(Icons.person, size: radius, color: Colors.grey.shade400)
+          : null,
+    );
+  }
+
+  // Widget helper para a coluna de informações, para reutilizar no desktop
+  Widget _buildInfoColumn() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Texto(tit: name, tam: 18, fontWeight: FontWeight.bold),
+            ),
+            // Os botões de ação ficam aqui no layout de desktop
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (onImage != null) IconButton(icon: const Icon(Icons.image_outlined, color: Colors.green), onPressed: onImage),
+                if (onEdit != null) IconButton(icon: const Icon(Icons.edit, color: Color(0xFFa49494)), onPressed: onEdit),
+                if (onDelete != null) IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: onDelete),
+              ],
+            )
+          ],
+        ),
+        const SizedBox(height: 8),
+        _buildInfoDetails(),
+      ],
+    );
+  }
+
+  // Widget helper para os detalhes (data, valor, etc.)
+  Widget _buildInfoDetails() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Texto(tit: 'Email: $email', tam: 12),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Texto(tit: '${'tattoo_date'.tr}: ${converteData(dateTattoo)}'),
+            Texto(tit: converteHora(dateTattoo), tam: 14, negrito: true, left: 10, cor: Colors.blue),
+          ],
+        ),
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: onValueTap, // Chama o callback ao ser clicado
+          borderRadius: BorderRadius.circular(4),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min, // Para o InkWell não se esticar
+              children: [
+                Texto(
+                  // Formata o número como moeda
+                  tit: 'Value: ${NumberFormat.simpleCurrency(locale: 'en_AU').format(value)}',
+                ),
+                const SizedBox(width: 8),
+                Icon(Icons.edit, size: 16, color: Colors.grey.shade600),
+              ],
+            ),
+          ),
+        ),
+
+        /*
+        Texto(tit: tempoCorrido(dateTattoo), tam: 11),
+        const SizedBox(height: 4),
+        Texto(tit: 'Value: 980.00'), // Mantenha seus dados aqui
+
+         */
+      ],
+    );
+  }
+
+  // Widget helper para os botões de ação no layout mobile
+  Widget _buildActionButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        if (onImage != null) TextButton.icon(icon: const Icon(Icons.image_outlined, color: Colors.green), label: Text('Image'), onPressed: onImage),
+        if (onEdit != null) TextButton.icon(icon: const Icon(Icons.edit, color: Color(0xFFa49494)), label: Text('Edit'), onPressed: onEdit),
+        if (onDelete != null) TextButton.icon(icon: const Icon(Icons.delete, color: Colors.red), label: Text('Delete'), onPressed: onDelete),
+      ],
+    );
+  }
+
   converteData(Timestamp timestamp ){
     DateTime dateTime = timestamp.toDate();
     return DateFormat('dd/MM/yyyy').format(dateTime);
@@ -438,6 +609,4 @@ class CustomerCard extends StatelessWidget {
     final tempoDecorrido = calcularDiferencaTempo(dataFirestore);
     return '${'tattoo_create'.tr} $tempoDecorrido';
   }
-
-
 }

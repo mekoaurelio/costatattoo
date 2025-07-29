@@ -46,5 +46,6 @@ const Map<String, String> en_US = {
   'successDel':"Customer deleted successfully!",
   'congra':'Congratulations!',
  'error':'An error occurred, please try again',
-
+  'new_value':'New Value',
+  'edit_value':'Edit Value',
 };

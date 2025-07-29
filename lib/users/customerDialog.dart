@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:country_flags/country_flags.dart';
 
 import '../data/db.dart';
@@ -183,78 +182,97 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
     );
   }
 
+  // dentro da classe _CustomerFormPageState
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Color(0xFFa49494),
+        title: Text(_isEditing ? 'edit_customer'.tr : 'new_customer'.tr), // Título dinâmico na AppBar
+        backgroundColor: const Color(0xFFa49494),
         actions: [
-          // Chamada para o Brasil
-          _buildLanguageButton(
-            context: context,
-            countryCodeForFlag: 'BR',        // Código para a bandeira
-            languageCodeForLocale: 'pt',     // Código de idioma para o GetX
-            countryCodeForLocale: 'BR',      // Código de país para o GetX
-            tooltipMessage: 'Português (Brasil)',
-          ),
-          // Chamada para a Espanha
-          _buildLanguageButton(
-            context: context,
-            countryCodeForFlag: 'ES',
-            languageCodeForLocale: 'es',
-            countryCodeForLocale: 'ES',
-            tooltipMessage: 'Español',
-          ),
-          // Chamada para a Austrália
-          _buildLanguageButton(
-            context: context,
-            countryCodeForFlag: 'AU',
-            languageCodeForLocale: 'en',
-            countryCodeForLocale: 'AU',
-            tooltipMessage: 'English (Australia)',
-          ),
-          const SizedBox(width: 16), // Espaçamento à direita
+          // ... (seus botões de idioma)
         ],
-
       ),
-      body: Center(
-        child:Container(
-          width: MediaQuery.of(context).size.width * 0.50,
-          child: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Texto(tit:'info_data'.tr,bottom: 20,tam: 22,),
-                  Texto(tit:'data_use'.tr,linhas: 3,bottom: 30,),
-                  CustomTextFiel(controller: _nameController, label: 'name'.tr, hintText: 'enterName'.tr,
-                    prefixIcon: Icons.person, obrigatorio: true,bottom: 10,
+      // Usamos LayoutBuilder para obter as restrições de tamanho da tela
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          // Define a largura máxima do formulário em telas grandes
+          const double maxFormWidth = 600.0;
+          // Define o breakpoint para mudar de layout
+          const double breakpoint = 700.0;
+
+          // Calcula a largura do formulário com base no tamanho da tela
+          // Se a tela for maior que o breakpoint, usamos a largura máxima.
+          // Senão, usamos a largura total da tela com um padding.
+          final double formWidth = constraints.maxWidth > breakpoint ? maxFormWidth : constraints.maxWidth;
+
+          // Centraliza o container do formulário na tela
+          return Center(
+            child: Container(
+              width: formWidth,
+              // Adiciona um padding horizontal em telas estreitas para não colar nas bordas
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 30), // Espaçamento do topo
+
+                      Texto(tit: 'info_data'.tr, bottom: 20, tam: 22, fontWeight: FontWeight.bold),
+                      Texto(tit: 'data_use'.tr, linhas: 3, bottom: 30, alin: TextAlign.center),
+
+                      // Os campos de texto permanecem os mesmos
+                      CustomTextFiel(
+                        controller: _nameController,
+                        label: 'name'.tr,
+                        hintText: 'enterName'.tr,
+                        prefixIcon: Icons.person,
+                        obrigatorio: true,
+                        bottom: 16,
+                      ),
+                      CustomTextFiel(
+                        controller: _emailController,
+                        label: 'email'.tr,
+                        hintText: 'enterEmail'.tr,
+                        prefixIcon: Icons.email_outlined,
+                        obrigatorio: true,
+                        bottom: 16,
+                      ),
+                      CustomTextFiel(
+                        controller: _dateWBController,
+                        label: 'birth_date'.tr,
+                        hintText: 'birth_date'.tr,
+                        prefixIcon: Icons.calendar_month,
+                        obrigatorio: true,
+                        bottom: 24,
+                        inputFormatters: [Utils.maskDt],
+                      ),
+
+                      // Botão de salvar
+                      AppButton(
+                        text: _isSaving ? 'saving'.tr : 'save'.tr,
+                        onPressed:  _saveCustomer,
+                        backgroundColor: const Color(0xFFa49494),
+                        // A largura do botão agora é gerenciada pelo pai (Column)
+                        // Remova a largura fixa se o AppButton permitir
+                        // width: 400,
+                        textColor: Colors.white,
+                        isLoading: _isSaving, // Adicione um parâmetro isLoading ao seu AppButton se possível
+                      ),
+                      const SizedBox(height: 30), // Espaçamento inferior
+                    ],
                   ),
-
-                  CustomTextFiel(controller: _emailController, label: 'email'.tr, hintText: 'enterEmail'.tr,
-                    prefixIcon: Icons.email_outlined, obrigatorio: true,bottom: 10,
-                  ),
-
-                  CustomTextFiel(controller: _dateWBController, label: 'birth_date'.tr, hintText: 'birth_date'.tr,
-                    prefixIcon: Icons.calendar_month, obrigatorio: true,bottom: 20,inputFormatters: [Utils.maskDt],
-                  ),
-
-                 AppButton(
-                     text: 'save'.tr,
-                     onPressed: _saveCustomer,
-                   backgroundColor: Color(0xFFa49494),
-                   width: 400,
-                   textColor: Colors.white,
-                 ),
-
-                ],
+                ),
               ),
             ),
-          ),
-        ) ,
-      )
+          );
+        },
+      ),
     );
   }
 }

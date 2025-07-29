@@ -46,4 +46,6 @@ const Map<String, String> pt_BR = {
   'successDel':"Cliente excluído com sucesso!",
   'congra':'Parabéns!',
   'error':'Aconteceu um erro, por favor tente novamente',
+  'new_value':'Novo Valor',
+  'edit_value':'Editar valor',
 };
