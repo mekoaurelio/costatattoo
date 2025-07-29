@@ -192,54 +192,13 @@ class _CustomerListState extends State<CustomerList> {
     }
   }
 
-/*
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.blue.shade300,
-        title:  Texto(tit:'customers'.tr),
-        actions: [
-          ///NOVO CLIENTE
-          IconButton(
-            icon: const Icon(Icons.person_add,color: Colors.black,weight: 100,),
-            tooltip: 'new_customer'.tr,
-            onPressed: () => _navigateToFormPage(),
-          ),
-          ///EDITAR
-          IconButton(
-            icon: const Icon(Icons.note_alt_outlined, color: Colors.red,),
-            tooltip: 'edit_notes'.tr,
-              onPressed: () {
-                Get.to(() => CustomerNotePage(), arguments: {});
-              },
-          ),
-        ],
-      ),
-      body: Column(
-       // mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Utils.logo(),
-          Expanded(
-              child: _paginatedList())
-        ],
-      )
-    );
-  }
-
- */
-
-  // dentro da classe _CustomerListState
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.blue.shade300,
-        title:  Texto(tit:'Costa Tattoo Studio',tam: 18,),
+        backgroundColor: Color(0xFFa49494),
+        title:  Texto(tit:'Costa Tattoo Studio',tam: 18,cor: Colors.white,),
         actions: [
 
         Container(
@@ -249,15 +208,12 @@ class _CustomerListState extends State<CustomerList> {
             hintText: 'Pesquisar por nome ou e-mail',
             label: '',
             left: 10,
+            prefixIconColor: Colors.white,
             prefixIcon: Icons.search_outlined,
             obrigatorio: false,
            // onChanged: _onSearchChanged(),
           ),
         ),
-/*
-https://github.com/mekoaurelio/costatattoo.git
- */
-
 
         ///NOVO CLIENTE
         IconButton(
@@ -267,7 +223,7 @@ https://github.com/mekoaurelio/costatattoo.git
         ),
         ///EDITAR
         IconButton(
-          icon: const Icon(Icons.note_alt_outlined, color: Colors.red,),
+          icon: const Icon(Icons.note_alt_outlined, color: Colors.white,),
           tooltip: 'edit_notes'.tr,
           onPressed: () {
             Get.to(() => CustomerNotePage(), arguments: {});
@@ -279,7 +235,6 @@ https://github.com/mekoaurelio/costatattoo.git
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
         //  Utils.logo(),
-
           Expanded(
             // CHAME O NOVO MÉTODO AQUI
             child: _paginatedList(),
@@ -294,7 +249,9 @@ https://github.com/mekoaurelio/costatattoo.git
       return const Center(child: CircularProgressIndicator());
     }
     if (_currentDocs.isEmpty) {
-      return const Center(child: Text('Nenhum cliente encontrado.'));
+      return Utils.vazio('Nenhum Cliente Encontrado');
+
+        //const Center(child: Text('Nenhum cliente encontrado.'));
     }
 
     return Column(
@@ -401,7 +358,7 @@ class CustomerCard extends StatelessWidget {
         child: Row( // Mudei para Row para alinhar a imagem e os dados
           children: [
             CircleAvatar(
-              radius: 120,
+              radius: 60,
               backgroundColor: Colors.grey.shade200,
               backgroundImage: (imageUrl != null && imageUrl!.isNotEmpty)
                   ? NetworkImage('$pathPhpFiles/get_image.php?img=$imageUrl&v=${DateTime.now().millisecondsSinceEpoch}',)
@@ -424,12 +381,17 @@ class CustomerCard extends StatelessWidget {
                       ),
                       if (onImage != null)
                         IconButton(
+                          icon: const Icon(Icons.monetization_on_rounded, color: Colors.grey),
+                          onPressed: onImage,
+                        ),
+                      if (onImage != null)
+                        IconButton(
                           icon: const Icon(Icons.image_outlined, color: Colors.green),
                           onPressed: onImage,
                         ),
                       if (onEdit != null)
                         IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          icon: const Icon(Icons.edit, color: Color(0xFFa49494),),
                           onPressed: onEdit,
                         ),
                       if (onDelete != null)
@@ -439,16 +401,21 @@ class CustomerCard extends StatelessWidget {
                         ),
                     ],
                   ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
                   Texto(tit:'Email: $email'),
-                  Texto(tit:'birth_date'.tr+ ': $dateWB'),
                   Row(
                     children: [
                       Texto(tit:'tattoo_date'.tr+ ': ${converteData(dateTattoo)}'),
                       Texto(tit:converteHora(dateTattoo),tam: 18,negrito: true,left: 10,cor: Colors.blue,),
-                      Texto(tit:tempoCorrido(dateTattoo),left: 10,)
+                      Texto(tit:tempoCorrido(dateTattoo),left: 10,tam: 11,right: 15,)
                     ],
                   )
-
+                 // Texto(tit:'birth_date'.tr+ ': $dateWB'),
+                ],
+              ),
+                  Texto(tit:'Value: 980.00'),
                 ],
               ),
             ),

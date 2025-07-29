@@ -72,8 +72,8 @@ class _CustomerNotePageState extends State<CustomerNotePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor:Colors.white ,
-        title:  Texto(tit:'note_title'.tr),
+        backgroundColor: Color(0xFFa49494),
+        title:  Texto(tit:'note_title'.tr,cor: Colors.white,),
         actions: [
           // Botão de salvar na AppBar
           _isLoading
@@ -82,7 +82,7 @@ class _CustomerNotePageState extends State<CustomerNotePage> {
             child: Center(child: CircularProgressIndicator(color: Colors.white)),
           )
               : IconButton(
-            icon: const Icon(Icons.save,color: Colors.red,),
+            icon: const Icon(Icons.save,color: Colors.white,),
             onPressed: _saveNote,
             tooltip: 'Salvar Nota',
           ),

@@ -134,7 +134,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
             return;
           }
           data['createdAt'] = FieldValue.serverTimestamp();
-         // await FirebaseFirestore.instance.collection('customer').add(data);
+          await FirebaseFirestore.instance.collection('customer').add(data);
           ///MAND MENSAGENS DE CUIDADOSBÁSICOS
           String? texto = await Utils.getLongTextFromFirestore();
           Utils.enviarEmail(_emailController.text,'note_title'.tr,texto!);
@@ -188,7 +188,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Color(0xFFa49494),
         actions: [
           // Chamada para o Brasil
           _buildLanguageButton(
@@ -244,7 +244,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                  AppButton(
                      text: 'save'.tr,
                      onPressed: _saveCustomer,
-                   backgroundColor: Colors.blue.shade300,
+                   backgroundColor: Color(0xFFa49494),
                    width: 400,
                    textColor: Colors.white,
                  ),

@@ -12,7 +12,6 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:get/route_manager.dart';
 import '../const/const.dart';
-import '../widgets/formFieldData.dart';
 import '../widgets/texto.dart';
 
 class Utils {
@@ -75,8 +74,7 @@ class Utils {
   static Future<dynamic> enviarEmail(String email,String title,String msg)async {
     try {
 
-      var em='mekoaurelio@gmail.com';
-      var url = '${pathPhpFiles}/email.php?email=$em&title=$title&msg=$msg';
+      var url = '${pathPhpFiles}/email.php?email=$email&title=$title&msg=$msg';
 
       final response = await http.get(Uri.parse(url),
           headers: {
@@ -149,7 +147,7 @@ class Utils {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset("assets/images/indisponivel.png",
+          Image.asset("assets/indisponivel.png",
             width: width,
             height: height,
             fit: BoxFit.cover,
