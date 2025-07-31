@@ -36,7 +36,7 @@ class _CustomerListState extends State<CustomerList> {
   Future<void> _loadInitialData() async {
     setState(() => _isLoading = true);
     await _getTotalItems();
-    await _loadPage(isInitial: true);
+    await _loadPage(direction: 'initial');
     setState(() => _isLoading = false);
   }
 
@@ -56,9 +56,7 @@ class _CustomerListState extends State<CustomerList> {
 
     return query.orderBy('createdAt', descending: true);
   }
-
-  // dentro da classe _CustomerListState
-
+  /*
   Future<void> _loadPage({bool next = true, bool isInitial = false}) async {
     if (!mounted) return;
 
@@ -109,9 +107,143 @@ class _CustomerListState extends State<CustomerList> {
     }
   }
 
-// **Lógica de "Previous" mais robusta (Opcional, mas recomendado)**
-// Se você quiser que o botão "Voltar" funcione bem com a busca,
-// a lógica precisa ser mais explícita.
+   */
+
+  // dentro da classe _CustomerListState
+
+  Future<void> _loadPage({
+    String direction = 'initial', // 'initial', 'next', 'previous', 'reload'
+  }) async {
+    if (!mounted) return;
+
+    Query query = _buildBaseQuery(); // Sempre começa com a query base correta
+
+    switch (direction) {
+      case 'initial':
+        _lastDoc = null;
+        _firstDoc = null;
+        _currentPage = 1;
+        break;
+      case 'next':
+        if (_lastDoc != null) query = query.startAfterDocument(_lastDoc!);
+        break;
+      case 'previous':
+      // Para "previous", a lógica mais segura é buscar em ordem reversa
+      // e depois inverter o resultado localmente.
+        if (_firstDoc != null) {
+          query = _buildBaseQuery()
+              .orderBy('createdAt', descending: true) // Inverte a ordenação principal
+              .startAfterDocument(_firstDoc!)
+              .limit(_pageSize);
+
+          final snapshot = await query.get();
+          if (snapshot.docs.isNotEmpty) {
+            setState(() {
+              _currentDocs = snapshot.docs.reversed.toList();
+              _firstDoc = _currentDocs.first;
+              _lastDoc = _currentDocs.last;
+              _currentPage--;
+            });
+          }
+          return; // Retorna para não executar a query principal
+        }
+        break;
+      case 'reload':
+        if (_currentPage > 1 && _firstDoc != null) {
+          Query reloadQuery = _buildBaseQuery();
+          // Para chegar na página atual, precisamos "pular" as páginas anteriores.
+          if (_currentPage > 1) {
+            final snapshotToSkip = await reloadQuery.limit((_currentPage - 1) * _pageSize).get();
+            if (snapshotToSkip.docs.isNotEmpty) {
+              query = query.startAfterDocument(snapshotToSkip.docs.last);
+            }
+          }
+        }
+        break;
+    }
+
+    final snapshot = await query.limit(_pageSize).get();
+
+    if (snapshot.docs.isNotEmpty) {
+      setState(() {
+        _currentDocs = snapshot.docs;
+        _firstDoc = snapshot.docs.first;
+        _lastDoc = _currentDocs.last;
+        if (direction == 'next') _currentPage++;
+      });
+    } else if (direction == 'initial' || direction == 'reload') {
+      setState(() {
+        _currentDocs = [];
+        _lastDoc = null;
+        _firstDoc = null;
+      });
+    }
+  }
+/*
+  Future<void> _reloadCurrentPage() async {
+    setState(() => _isLoading = true);
+
+    Query query = _buildBaseQuery().limit(_currentPage * _pageSize);
+    final snapshot = await query.get();
+
+    if (snapshot.docs.isNotEmpty) {
+      // Pega apenas os últimos `_pageSize` documentos, que correspondem à página atual
+      final startIndex = (_currentPage - 1) * _pageSize;
+      setState(() {
+        _currentDocs = snapshot.docs.sublist(startIndex);
+        _firstDoc = _currentDocs.first;
+        _lastDoc = _currentDocs.last;
+      });
+    } else {
+      // Se não houver mais dados (ex: o item foi deletado), volta para a primeira página.
+      _loadInitialData();
+    }
+
+    setState(() => _isLoading = false);
+  }
+
+ */
+
+  // dentro da classe _CustomerListState
+
+  Future<void> _reloadCurrentPage() async {
+    // Mostra um indicador de carregamento para feedback visual
+    setState(() => _isLoading = true);
+
+    // Busca todos os documentos até a página atual.
+    // Isso é necessário para encontrar o cursor correto para começar a busca da página atual.
+    QuerySnapshot snapshotToDetermineCursor;
+    if (_currentPage == 1) {
+      snapshotToDetermineCursor = await _buildBaseQuery().limit((_currentPage) * _pageSize).get();
+    } else {
+      snapshotToDetermineCursor = await _buildBaseQuery().limit((_currentPage - 1) * _pageSize).get();
+    }
+
+    Query query = _buildBaseQuery();
+
+    // Se não estiver na primeira página, define o cursor inicial
+    if (_currentPage > 1 && snapshotToDetermineCursor.docs.isNotEmpty) {
+      query = query.startAfterDocument(snapshotToDetermineCursor.docs.last);
+    }
+
+    // Busca os documentos da página atual
+    final snapshot = await query.limit(_pageSize).get();
+
+    if (snapshot.docs.isNotEmpty) {
+      setState(() {
+        _currentDocs = snapshot.docs;
+        _firstDoc = _currentDocs.first;
+        _lastDoc = _currentDocs.last;
+      });
+    } else {
+      // Se a página atual ficou vazia (ex: último item foi deletado),
+      // é melhor voltar para a primeira página.
+      await _loadInitialData();
+    }
+
+    setState(() => _isLoading = false);
+  }
+
   Future<void> _loadPreviousPage() async {
     if (_firstDoc == null) return;
 
@@ -264,7 +396,7 @@ class _CustomerListState extends State<CustomerList> {
     );
   }
 
-  // NOVA FUNÇÃO para mostrar o diálogo de edição do valor
+  /*
   Future<void> _showEditValueDialog(DocumentSnapshot customerDoc) async {
     final data = customerDoc.data() as Map<String, dynamic>;
     final currentValue = (data['value'] ?? 0.0).toString();
@@ -316,6 +448,69 @@ class _CustomerListState extends State<CustomerList> {
 
           Utils.snak('success'.tr, 'value_updated'.tr, false, Colors.green);
           // Não é necessário chamar setState, o StreamBuilder cuidará da atualização da UI
+        } catch (e) {
+          Utils.snak('error'.tr, 'update_failed'.tr, false, Colors.red);
+        }
+      } else {
+        Utils.snak('error'.tr, 'invalid_value'.tr, false, Colors.red);
+      }
+    }
+  }
+
+   */
+
+  // dentro da classe _CustomerListState
+
+  Future<void> _showEditValueDialog(DocumentSnapshot customerDoc) async {
+    final data = customerDoc.data() as Map<String, dynamic>;
+    final currentValue = (data['value'] ?? 0.0).toString();
+    final valueController = TextEditingController(text: currentValue);
+
+    final newValue = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('edit_value'.tr),
+          content: TextField(
+            controller: valueController,
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'new_value'.tr,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: Text('cancel'.tr),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ElevatedButton(
+              child: Text('save'.tr),
+              onPressed: () {
+                Navigator.of(context).pop(valueController.text);
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    if (newValue != null && newValue != currentValue) {
+      final double? parsedValue = double.tryParse(newValue.replaceAll(',', '.'));
+      if (parsedValue != null) {
+        try {
+          await FirebaseFirestore.instance
+              .collection('customer')
+              .doc(customerDoc.id)
+              .update({'value': parsedValue});
+
+          Utils.snak('success'.tr, 'value_updated'.tr, false, Colors.green);
+
+          // **** AQUI ESTÁ A CORREÇÃO ****
+          // Após a atualização bem-sucedida, chame a função para recarregar os dados da página atual.
+          await _reloadCurrentPage();
+
         } catch (e) {
           Utils.snak('error'.tr, 'update_failed'.tr, false, Colors.red);
         }
@@ -382,7 +577,7 @@ class _CustomerListState extends State<CustomerList> {
       children: [
         IconButton(
           icon: const Icon(Icons.first_page),
-          onPressed: _currentPage > 1 ? () => _loadPage(isInitial: true) : null,
+          onPressed: _currentPage > 1 ? () => _loadPage(direction: '') : null,
         ),
         IconButton(
           icon: const Icon(Icons.navigate_before),
@@ -392,7 +587,7 @@ class _CustomerListState extends State<CustomerList> {
         Texto(tit: 'Página $_currentPage de ${((_totalItems / _pageSize).ceil()).clamp(1, 999)}'),
         IconButton(
           icon: const Icon(Icons.navigate_next),
-          onPressed: hasNextPage ? () => _loadPage(next: true) : null,
+          onPressed: hasNextPage ? () => _loadPage(direction:'next') : null,
         ),
         // O botão "Last Page" é muito custoso e complexo de implementar com Firestore cursors.
         // É comum removê-lo ou usar outra estratégia. Vou deixá-lo desabilitado por enquanto.
